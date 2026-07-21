@@ -17,13 +17,23 @@ public static partial class WindowMessageLoop
         _exitCode = exitCode;
         Application.Quit();
     };
-    private static readonly Action<CoreWindow> _windowShowAction = static window => window.Show();
+    private static readonly Action<CoreWindow> _windowShowAction = static window => window.ShowInternal();
 
     private static CoreWindow? _mainWindow;
     private static uint _invokeBarrier, _threadIdForMessageLoop;
     private static int _exitCode;
 
     public static CoreWindow? MainWindow => InterlockedHelper.Read(ref _mainWindow);
+
+    public static bool HasMessageLoop
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
+            return messageLoopThreadId != 0;
+        }
+    }
 
     public static bool IsMessageLoopThread
     {
@@ -56,7 +66,7 @@ public static partial class WindowMessageLoop
         {
             mainWindow.Closed += OnWindowClosed;
             if (isMessageLoopThread)
-                mainWindow.Show();
+                mainWindow.ShowInternal();
             else
                 InvokeAsync(_windowShowAction, mainWindow);
         }

@@ -22,6 +22,22 @@ public abstract class CoreWindow : Window
 
     public new void Show()
     {
+        if (WindowMessageLoop.HasMessageLoop)
+        {
+            if (!WindowMessageLoop.IsMessageLoopThread)
+                InvalidOperationException.Throw();
+            ShowInternal();
+        }
+        else
+            WindowMessageLoop.Start(this);
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [Obsolete("Use Show() insteads.")]
+    public new void ShowAll() => Show();
+
+    internal void ShowInternal()
+    {
         if (!_isInitialized)
         {
             InitializeWidgets();
@@ -29,10 +45,6 @@ public abstract class CoreWindow : Window
         }
         base.ShowAll();
     }
-
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    [Obsolete("Use Show() insteads.")]
-    public new void ShowAll() => Show();
 
     protected override bool OnDeleteEvent(Gdk.Event evnt)
     {
