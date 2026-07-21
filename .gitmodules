@@ -1,0 +1,3 @@
+[submodule "RiceTea.Core"]
+	path = RiceTea.Core
+	url = https://github.com/new1271/RiceTea.Core

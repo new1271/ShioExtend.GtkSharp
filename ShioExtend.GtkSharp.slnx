@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/方案項目/">
+    <File Path=".editorconfig" />
+    <File Path="GlobalAssemblyInfo.cs" />
+  </Folder>
+  <Project Path="RiceTea.Core/RiceTea.Core/RiceTea.Core.csproj" />
+  <Project Path="ShioExtend.GtkSharp/ShioExtend.GtkSharp.csproj" />
+</Solution>
