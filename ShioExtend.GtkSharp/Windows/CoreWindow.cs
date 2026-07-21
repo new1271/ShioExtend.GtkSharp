@@ -20,30 +20,37 @@ public abstract class CoreWindow : Window
 
     protected CoreWindow(string title) : base(title) { }
 
-    public new void Show()
+    public new void Show() => ShowCore(forceShowAll: false);
+
+    public new void ShowAll() => ShowCore(forceShowAll: true);
+
+    private void ShowCore(bool forceShowAll)
     {
         if (WindowMessageLoop.HasMessageLoop)
         {
             if (!WindowMessageLoop.IsMessageLoopThread)
                 InvalidOperationException.Throw();
-            ShowInternal();
+            ShowInternal(forceShowAll);
         }
         else
             WindowMessageLoop.Start(this);
     }
 
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    [Obsolete("Use Show() insteads.")]
-    public new void ShowAll() => Show();
-
-    internal void ShowInternal()
+    internal void ShowInternal(bool forceShowAll)
     {
         if (!_isInitialized)
         {
             InitializeWidgets();
             _isInitialized = true;
+            base.ShowAll();
         }
-        base.ShowAll();
+        else
+        {
+            if (forceShowAll)
+                base.ShowAll();
+            else
+                base.Show();
+        }
     }
 
     protected override bool OnDeleteEvent(Gdk.Event evnt)
