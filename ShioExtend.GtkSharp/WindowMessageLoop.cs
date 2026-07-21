@@ -17,7 +17,7 @@ public static partial class WindowMessageLoop
         _exitCode = exitCode;
         Application.Quit();
     };
-    private static readonly Action<CoreWindow> _windowShowAction = static window => window.ShowAll();
+    private static readonly Action<CoreWindow> _windowShowAction = static window => window.Show();
 
     private static CoreWindow? _mainWindow;
     private static uint _invokeBarrier, _threadIdForMessageLoop;
@@ -56,7 +56,7 @@ public static partial class WindowMessageLoop
         {
             mainWindow.Closed += OnWindowClosed;
             if (isMessageLoopThread)
-                mainWindow.ShowAll();
+                mainWindow.Show();
             else
                 InvokeAsync(_windowShowAction, mainWindow);
         }

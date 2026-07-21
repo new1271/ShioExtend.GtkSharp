@@ -9,7 +9,7 @@ namespace ShioExtend.GtkSharp.Windows;
 
 public abstract class CoreWindow : Window
 {
-    private bool _disposed;
+    private bool _disposed, _isInitialized;
 
     public event CancelEventHandler? Closing;
     public event EventHandler? Closed;
@@ -20,6 +20,20 @@ public abstract class CoreWindow : Window
 
     protected CoreWindow(string title) : base(title) { }
 
+    public new void Show()
+    {
+        if (!_isInitialized)
+        {
+            InitializeWidgets();
+            _isInitialized = true;
+        }
+        base.ShowAll();
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [Obsolete("Use Show() insteads.")]
+    public new void ShowAll() => Show();
+
     protected override bool OnDeleteEvent(Gdk.Event evnt)
     {
         if (base.OnDeleteEvent(evnt) || OnClosing())
@@ -28,6 +42,8 @@ public abstract class CoreWindow : Window
         OnClosed();
         return false;
     }
+
+    protected abstract void InitializeWidgets();
 
     protected virtual bool OnClosing()
     {

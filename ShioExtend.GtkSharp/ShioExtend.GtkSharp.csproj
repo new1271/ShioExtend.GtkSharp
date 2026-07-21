@@ -68,9 +68,5 @@
 	<ItemGroup>
 		<ProjectReference Include="$(SolutionDir)\RiceTea.Core\RiceTea.Core\RiceTea.Core.csproj" />
 	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Windows\" />
-	</ItemGroup>
 	
 </Project>
