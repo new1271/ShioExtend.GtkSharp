@@ -7,7 +7,7 @@ using RiceTea.Core.Helpers;
 
 namespace ShioExtend.GtkSharp.Windows;
 
-internal abstract class CoreWindow : Window
+public abstract class CoreWindow : Window
 {
     private bool _disposed;
 

@@ -10,7 +10,7 @@ using ShioExtend.GtkSharp.Windows;
 
 namespace ShioExtend.GtkSharp;
 
-internal static partial class WindowMessageLoop
+public static partial class WindowMessageLoop
 {
     private static readonly Action<int> _stopAction = static exitCode =>
     {
