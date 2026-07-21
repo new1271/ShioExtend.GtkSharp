@@ -20,23 +20,25 @@ public abstract class CoreWindow : Window
 
     protected CoreWindow(string title) : base(title) { }
 
-    public new void Show() => ShowCore(forceShowAll: false);
+    public new void Show() => Show(forceShowAll: false);
 
-    public new void ShowAll() => ShowCore(forceShowAll: true);
+    public new void ShowAll() => Show(forceShowAll: true);
 
-    private void ShowCore(bool forceShowAll)
+    private void Show(bool forceShowAll)
     {
         if (WindowMessageLoop.HasMessageLoop)
         {
             if (!WindowMessageLoop.IsMessageLoopThread)
                 InvalidOperationException.Throw();
-            ShowInternal(forceShowAll);
+            ShowCore(forceShowAll);
         }
         else
             WindowMessageLoop.Start(this);
     }
 
-    internal void ShowInternal(bool forceShowAll)
+    internal void ShowInternal() => ShowCore(forceShowAll: false);
+
+    private void ShowCore(bool forceShowAll)
     {
         if (!_isInitialized)
         {
