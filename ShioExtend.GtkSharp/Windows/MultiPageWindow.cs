@@ -112,6 +112,7 @@ public abstract class MultiPageWindow : CoreWindow
             list.Dispose();
         }
 
+        _pageStack.VisibleChildName = _pageNames[_pageIndex];
         stack.AddNotification("visible-child-name", PageStack_VisibleChildNameChanged);
     }
 

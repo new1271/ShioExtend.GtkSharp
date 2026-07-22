@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 using Gtk;
 
@@ -8,6 +9,8 @@ using RiceTea.Core.Native;
 
 using ShioExtend.GtkSharp.Windows;
 
+using GMainContext = GLib.MainContext;
+
 namespace ShioExtend.GtkSharp;
 
 public static partial class WindowMessageLoop
@@ -15,24 +18,24 @@ public static partial class WindowMessageLoop
     private static readonly Action<int> _stopAction = static exitCode =>
     {
         _exitCode = exitCode;
-        Application.Quit();
+        _isStarted = 0;
     };
     private static readonly Action<CoreWindow> _windowShowAction = static window => window.ShowInternal();
 
+    private static GMainContext? _context;
     private static CoreWindow? _mainWindow;
+    private static nuint _isStarted;
     private static uint _invokeBarrier, _threadIdForMessageLoop;
     private static int _exitCode;
+
+    public static event MessageLoopExceptionEventHandler? ExceptionCaught;
 
     public static CoreWindow? MainWindow => InterlockedHelper.Read(ref _mainWindow);
 
     public static bool HasMessageLoop
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get
-        {
-            uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-            return messageLoopThreadId != 0;
-        }
+        get => InterlockedHelper.Read(ref _isStarted) != 0;
     }
 
     public static bool IsMessageLoopThread
@@ -45,11 +48,21 @@ public static partial class WindowMessageLoop
         }
     }
 
+    public static void Initialize()
+    {
+        uint threadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
+        if (threadId != 0)
+            InvalidOperationException.Throw();
+        Application.Init();
+        InterlockedHelper.Write(ref _threadIdForMessageLoop, NativeMethods.GetCurrentThreadId());
+        _context = GMainContext.Default;
+    }
+
     public static void ChangeMainWindow(CoreWindow? mainWindow)
     {
         uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
         if (messageLoopThreadId == 0)
-            InvalidOperationException.Throw("The message loop is not exists!");
+            InvalidOperationException.Throw("The message loop is not initialized!");
         ChangeMainWindowCore(mainWindow, IsMessageLoopThread);
     }
 
@@ -76,19 +89,49 @@ public static partial class WindowMessageLoop
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int Start(CoreWindow? mainWindow)
     {
-        uint currentThreadId = NativeMethods.GetCurrentThreadId();
-        if (InterlockedHelper.CompareExchange(ref _threadIdForMessageLoop, currentThreadId, 0) != 0)
-            InvalidOperationException.Throw("Message loop is already exists!");
-
+        if (!IsMessageLoopThread || InterlockedHelper.Exchange(ref _isStarted, 1) != 0)
+            InvalidOperationException.Throw();
         ChangeMainWindowCore(mainWindow, isMessageLoopThread: true);
-        Application.Run();
-        int result = _exitCode;
-        InterlockedHelper.CompareExchange(ref _threadIdForMessageLoop, 0, currentThreadId);
-
+        int result = DoMessageLoop();
         ChangeMainWindowCore(null, isMessageLoopThread: false);
         return result;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Stop(int exitCode = 0) => InvokeAsync(_stopAction, exitCode);
+
+    internal static MessageLoopExceptionEventHandler? GetExceptionEventHandler() => ExceptionCaught;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static int DoMessageLoop()
+    {
+        GMainContext? context = _context;
+        if (context is null)
+            return 0;
+        while (InterlockedHelper.Read(ref _isStarted) != 0)
+            context.RunIteration(may_block: true);
+        while (context.HasPendingEvents)
+            context.RunIteration(may_block: true);
+        return _exitCode;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void StartMiniLoop(CancellationToken cancellationToken)
+    {
+        GMainContext? context;
+        if (cancellationToken.IsCancellationRequested || (context = _context) is null)
+            return;
+
+        InvokeIdleHandler.ProcessAllInvoke();
+
+        using CancellationTokenRegistration registration = cancellationToken.Register(static (state) =>
+        {
+            if (state is not GMainContext context)
+                return;
+            context.Wakeup();
+        }, context, useSynchronizationContext: false);
+
+        while (!cancellationToken.IsCancellationRequested && InterlockedHelper.Read(ref _isStarted) != 0)
+            context.RunIteration(may_block: true);
+    }
 }

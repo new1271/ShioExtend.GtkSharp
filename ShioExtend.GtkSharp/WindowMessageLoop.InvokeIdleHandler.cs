@@ -89,6 +89,19 @@ partial class WindowMessageLoop
             _currentProcessingQueue = queue;
         }
 
-        private static void DoInvoke(IInvokeClosure closure) => closure.Invoke();
+        private static void DoInvoke(IInvokeClosure closure)
+        {
+            try
+            {
+                closure.Invoke();
+            }
+            catch (Exception ex)
+            {
+                MessageLoopExceptionEventHandler? eventHandler = ExceptionCaught;
+                if (eventHandler is null)
+                    throw;
+                eventHandler.Invoke(null, new MessageLoopExceptionEventArgs(ex));
+            }
+        }
     }
 }

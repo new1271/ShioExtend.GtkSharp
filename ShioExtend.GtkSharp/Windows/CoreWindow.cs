@@ -1,18 +1,25 @@
 using System;
 using System.ComponentModel;
+using System.Threading;
 
 using Gtk;
 
+using RiceTea.Core;
 using RiceTea.Core.Helpers;
 
 namespace ShioExtend.GtkSharp.Windows;
 
-public abstract class CoreWindow : Window
+public abstract class CoreWindow : Window, ICheckableDisposable
 {
     private bool _disposed, _isInitialized;
+    private CancellationTokenSource? _dialogTokenSource;
 
     public event CancelEventHandler? Closing;
     public event EventHandler? Closed;
+
+    public ResponseType Response { get; set; }
+
+    public bool IsDisposed => _disposed;
 
     protected CoreWindow(nint raw) : base(raw) { }
 
@@ -36,6 +43,29 @@ public abstract class CoreWindow : Window
             WindowMessageLoop.Start(this);
     }
 
+    public ResponseType ShowDialog(CoreWindow? parent)
+    {
+        if (WindowMessageLoop.HasMessageLoop)
+        {
+            if (!WindowMessageLoop.IsMessageLoopThread)
+                InvalidOperationException.Throw();
+            ShowDialogCore(parent);
+        }
+        else
+        {
+            if (parent is null)
+                WindowMessageLoop.Start(this);
+            else
+            {
+                parent.Show();
+                if (!WindowMessageLoop.HasMessageLoop || !WindowMessageLoop.IsMessageLoopThread)
+                    InvalidOperationException.Throw();
+                ShowDialogCore(parent);
+            }
+        }
+        return Response;
+    }
+
     internal void ShowInternal() => ShowCore(forceShowAll: false);
 
     private void ShowCore(bool forceShowAll)
@@ -53,6 +83,16 @@ public abstract class CoreWindow : Window
             else
                 base.Show();
         }
+    }
+
+    private void ShowDialogCore(CoreWindow? parent)
+    {
+        ShowCore(forceShowAll: false);
+        TransientFor = parent;
+        Modal = true;
+        CancellationTokenSource tokenSource = new CancellationTokenSource();
+        InterlockedHelper.Write(ref _dialogTokenSource, tokenSource);
+        WindowMessageLoop.StartMiniLoop(tokenSource.Token);
     }
 
     protected override bool OnDeleteEvent(Gdk.Event evnt)
@@ -85,6 +125,21 @@ public abstract class CoreWindow : Window
         if (ReferenceHelper.Exchange(ref _disposed, true))
             return;
         DisposeCore(disposing);
+        CancellationTokenSource? dialogTokenSource = InterlockedHelper.Exchange(ref _dialogTokenSource, null);
+        if (dialogTokenSource is not null)
+        {
+            try
+            {
+                dialogTokenSource.Cancel(throwOnFirstException: false);
+            }
+            catch (Exception)
+            {
+            }
+            finally
+            {
+                dialogTokenSource.Dispose();
+            }
+        }
         base.Dispose(disposing);
     }
 }

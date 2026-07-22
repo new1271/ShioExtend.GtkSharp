@@ -16,7 +16,7 @@ partial class WindowMessageLoop
     public static object? Invoke(Delegate @delegate)
     {
         uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0)
+        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
@@ -30,7 +30,7 @@ partial class WindowMessageLoop
     public static object? Invoke(Delegate @delegate, params object?[]? args)
     {
         uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0)
+        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
@@ -44,7 +44,7 @@ partial class WindowMessageLoop
     public static void InvokeAsync(Delegate @delegate)
     {
         uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0)
+        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         InvokeCoreAsync(messageLoopThreadId, @delegate, null, CancellationToken.None);
@@ -58,7 +58,7 @@ partial class WindowMessageLoop
     public static void InvokeAsync(Delegate @delegate, object?[]? args, CancellationToken cancellationToken = default)
     {
         uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0)
+        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         InvokeCoreAsync(messageLoopThreadId, @delegate, args, cancellationToken);
@@ -67,7 +67,7 @@ partial class WindowMessageLoop
     public static Task<object?> InvokeTaskAsync(Delegate @delegate)
     {
         uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0)
+        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         return InvokeTaskCoreAsync(messageLoopThreadId, @delegate, null, CancellationToken.None);
@@ -81,7 +81,7 @@ partial class WindowMessageLoop
     public static Task<object?> InvokeTaskAsync(Delegate @delegate, object?[]? args, CancellationToken cancellationToken = default)
     {
         uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0)
+        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         return InvokeTaskCoreAsync(messageLoopThreadId, @delegate, args, cancellationToken);
