@@ -45,19 +45,12 @@ public static partial class WindowMessageLoop
         }
     }
 
-    public static int Start(CoreWindow mainWindow)
+    public static void ChangeMainWindow(CoreWindow? mainWindow)
     {
-        uint currentThreadId = NativeMethods.GetCurrentThreadId();
-        if (InterlockedHelper.CompareExchange(ref _threadIdForMessageLoop, currentThreadId, 0) != 0)
-            InvalidOperationException.Throw("Message loop is already exists!");
-
-        ChangeMainWindowCore(mainWindow, isMessageLoopThread: true);
-        Application.Run();
-        int result = _exitCode;
-        InterlockedHelper.CompareExchange(ref _threadIdForMessageLoop, 0, currentThreadId);
-
-        ChangeMainWindowCore(null, isMessageLoopThread: false);
-        return result;
+        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0)
+            InvalidOperationException.Throw("The message loop is not exists!");
+        ChangeMainWindowCore(mainWindow, IsMessageLoopThread);
     }
 
     private static void ChangeMainWindowCore(CoreWindow? mainWindow, bool isMessageLoopThread)
@@ -71,10 +64,29 @@ public static partial class WindowMessageLoop
                 InvokeAsync(_windowShowAction, mainWindow);
         }
         CoreWindow? oldWindow = InterlockedHelper.Exchange(ref _mainWindow, mainWindow);
-        if (oldWindow is not null)
+        if (oldWindow is not null && !ReferenceEquals(oldWindow, mainWindow))
             oldWindow.Closed -= OnWindowClosed;
 
         static void OnWindowClosed(object? sender, EventArgs e) => Stop();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int Start() => Start(mainWindow: null);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int Start(CoreWindow? mainWindow)
+    {
+        uint currentThreadId = NativeMethods.GetCurrentThreadId();
+        if (InterlockedHelper.CompareExchange(ref _threadIdForMessageLoop, currentThreadId, 0) != 0)
+            InvalidOperationException.Throw("Message loop is already exists!");
+
+        ChangeMainWindowCore(mainWindow, isMessageLoopThread: true);
+        Application.Run();
+        int result = _exitCode;
+        InterlockedHelper.CompareExchange(ref _threadIdForMessageLoop, 0, currentThreadId);
+
+        ChangeMainWindowCore(null, isMessageLoopThread: false);
+        return result;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
