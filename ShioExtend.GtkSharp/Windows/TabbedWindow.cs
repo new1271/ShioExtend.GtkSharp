@@ -67,6 +67,6 @@ public abstract class TabbedWindow : MultiPageWindow
         window.UpdateTitleLabel(window.Title);
     }
 
-    private void UpdateTitleLabel(string text) => _titleLabel.Markup = $"<b>{text}</b>";
+    private void UpdateTitleLabel(string text) => _titleLabel.Markup = $"<span weight=\"bold\" size=\"larger\">{text}</span>";
     #endregion
 }
