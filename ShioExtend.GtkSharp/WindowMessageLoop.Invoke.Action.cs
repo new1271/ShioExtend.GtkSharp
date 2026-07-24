@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-using RiceTea.Core.Helpers;
+using RiceTea.Core;
 using RiceTea.Core.Native;
 
 namespace ShioExtend.GtkSharp;
@@ -11,8 +11,8 @@ partial class WindowMessageLoop
 {
     public static void Invoke(Action action)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
@@ -26,8 +26,8 @@ partial class WindowMessageLoop
 
     public static void Invoke<TArg>(Action<TArg> action, TArg arg)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
@@ -41,8 +41,8 @@ partial class WindowMessageLoop
 
     public static void Invoke<TArg1, TArg2>(Action<TArg1, TArg2> action, TArg1 arg1, TArg2 arg2)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
@@ -56,8 +56,8 @@ partial class WindowMessageLoop
 
     public static void Invoke<TArg1, TArg2, TArg3>(Action<TArg1, TArg2, TArg3> action, TArg1 arg1, TArg2 arg2, TArg3 arg3)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
@@ -71,8 +71,8 @@ partial class WindowMessageLoop
 
     public static void InvokeAsync(Action action, CancellationToken cancellationToken = default)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         InvokeCoreAsync(messageLoopThreadId, action, cancellationToken);
@@ -81,8 +81,8 @@ partial class WindowMessageLoop
     public static void InvokeAsync<TArg>(Action<TArg> action,
         TArg arg, CancellationToken cancellationToken = default)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         InvokeCoreAsync(messageLoopThreadId, action, arg, cancellationToken);
@@ -91,8 +91,8 @@ partial class WindowMessageLoop
     public static void InvokeAsync<TArg1, TArg2>(Action<TArg1, TArg2> action,
         TArg1 arg1, TArg2 arg2, CancellationToken cancellationToken = default)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         InvokeCoreAsync(messageLoopThreadId, action, arg1, arg2, cancellationToken);
@@ -101,8 +101,8 @@ partial class WindowMessageLoop
     public static void InvokeAsync<TArg1, TArg2, TArg3>(Action<TArg1, TArg2, TArg3> action,
         TArg1 arg1, TArg2 arg2, TArg3 arg3, CancellationToken cancellationToken = default)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
         InvokeCoreAsync(messageLoopThreadId, action, arg1, arg2, arg3, cancellationToken);
@@ -110,8 +110,8 @@ partial class WindowMessageLoop
 
     public static Task InvokeTaskAsync(Action action, CancellationToken cancellationToken = default)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             return InvalidOperationException.Throw<Task>();
 
         return InvokeTaskCoreAsync(messageLoopThreadId, action, cancellationToken);
@@ -120,8 +120,8 @@ partial class WindowMessageLoop
     public static Task InvokeTaskAsync<TArg>(Action<TArg> action,
         TArg arg, CancellationToken cancellationToken = default)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             return InvalidOperationException.Throw<Task>();
 
         return InvokeTaskCoreAsync(messageLoopThreadId, action, arg, cancellationToken);
@@ -130,8 +130,8 @@ partial class WindowMessageLoop
     public static Task InvokeTaskAsync<TArg1, TArg2>(Action<TArg1, TArg2> action,
         TArg1 arg1, TArg2 arg2, CancellationToken cancellationToken = default)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             return InvalidOperationException.Throw<Task>();
 
         return InvokeTaskCoreAsync(messageLoopThreadId, action, arg1, arg2, cancellationToken);
@@ -140,8 +140,8 @@ partial class WindowMessageLoop
     public static Task InvokeTaskAsync<TArg1, TArg2, TArg3>(Action<TArg1, TArg2, TArg3> action,
         TArg1 arg1, TArg2 arg2, TArg3 arg3, CancellationToken cancellationToken = default)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
-        if (messageLoopThreadId == 0 || InterlockedHelper.Read(ref _isStarted) == 0)
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             return InvalidOperationException.Throw<Task>();
 
         return InvokeTaskCoreAsync(messageLoopThreadId, action, arg1, arg2, arg3, cancellationToken);

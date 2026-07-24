@@ -1,21 +1,17 @@
 using System;
-using System.ComponentModel;
 using System.Threading;
 
 using Gtk;
 
 using RiceTea.Core;
-using RiceTea.Core.Helpers;
 
 namespace ShioExtend.GtkSharp.Windows;
 
-public abstract class CoreWindow : Window, ICheckableDisposable
+public abstract partial class CoreWindow : Window, ICheckableDisposable
 {
-    private bool _disposed, _isInitialized;
     private CancellationTokenSource? _dialogTokenSource;
-
-    public event CancelEventHandler? Closing;
-    public event EventHandler? Closed;
+    private CloseReason _closeReason;
+    private bool _disposed, _isInitialized;
 
     public ResponseType Response { get; set; }
 
@@ -35,8 +31,7 @@ public abstract class CoreWindow : Window, ICheckableDisposable
     {
         if (WindowMessageLoop.HasMessageLoop)
         {
-            if (!WindowMessageLoop.IsMessageLoopThread)
-                InvalidOperationException.Throw();
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
             ShowCore(forceShowAll);
         }
         else
@@ -47,8 +42,7 @@ public abstract class CoreWindow : Window, ICheckableDisposable
     {
         if (WindowMessageLoop.HasMessageLoop)
         {
-            if (!WindowMessageLoop.IsMessageLoopThread)
-                InvalidOperationException.Throw();
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
             ShowDialogCore(parent);
         }
         else
@@ -91,41 +85,43 @@ public abstract class CoreWindow : Window, ICheckableDisposable
         TransientFor = parent;
         Modal = true;
         CancellationTokenSource tokenSource = new CancellationTokenSource();
-        InterlockedHelper.Write(ref _dialogTokenSource, tokenSource);
+        Atomics.Write(ref _dialogTokenSource, tokenSource);
         WindowMessageLoop.StartMiniLoop(tokenSource.Token);
+    }
+
+    public new void Close() => Close(CloseReason.Programmically);
+
+    public void Close(CloseReason reason)
+    {
+        WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
+        _closeReason = reason;
+        base.Close();
     }
 
     protected override bool OnDeleteEvent(Gdk.Event evnt)
     {
-        if (base.OnDeleteEvent(evnt) || OnClosing())
+        if (base.OnDeleteEvent(evnt))
+            return true;
+        ClosingEventArgs args = new ClosingEventArgs(Cells.Exchange(ref _closeReason, CloseReason.UserClicked), cancelled: false);
+        OnClosing(ref args);
+        if (args.Cancelled)
             return true;
 
-        OnClosed();
+        OnClosed(EventArgs.Empty);
         return false;
     }
 
     protected abstract void InitializeWidgets();
 
-    protected virtual bool OnClosing()
-    {
-        CancelEventHandler? eventHandler = Closing;
-        if (eventHandler is null)
-            return false;
-        CancelEventArgs args = new CancelEventArgs(false);
-        eventHandler.Invoke(this, args);
-        return args.Cancel;
-    }
-
-    protected virtual void OnClosed() => Closed?.Invoke(this, EventArgs.Empty);
-
     protected virtual void DisposeCore(bool disposing) { }
 
     protected override void Dispose(bool disposing)
     {
-        if (ReferenceHelper.Exchange(ref _disposed, true))
+        if (Cells.Exchange(ref _disposed, true))
             return;
         DisposeCore(disposing);
-        CancellationTokenSource? dialogTokenSource = InterlockedHelper.Exchange(ref _dialogTokenSource, null);
+        CancellationTokenSource? dialogTokenSource = Atomics.Exchange(ref _dialogTokenSource, null);
         if (dialogTokenSource is not null)
         {
             try

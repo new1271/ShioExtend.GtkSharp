@@ -116,10 +116,10 @@ public abstract class MultiPageWindow : CoreWindow
         stack.AddNotification("visible-child-name", PageStack_VisibleChildNameChanged);
     }
 
-    protected override void OnClosed()
+    protected override void OnClosed(EventArgs args)
     {
         _pageStack.RemoveNotification("visible-child-name", PageStack_VisibleChildNameChanged);
-        base.OnClosed();
+        base.OnClosed(args);
     }
     #endregion
 

@@ -4,7 +4,7 @@ using System.Threading;
 
 using Gtk;
 
-using RiceTea.Core.Helpers;
+using RiceTea.Core;
 using RiceTea.Core.Native;
 
 using ShioExtend.GtkSharp.Windows;
@@ -30,12 +30,12 @@ public static partial class WindowMessageLoop
 
     public static event MessageLoopExceptionEventHandler? ExceptionCaught;
 
-    public static CoreWindow? MainWindow => InterlockedHelper.Read(ref _mainWindow);
+    public static CoreWindow? MainWindow => Atomics.Read(ref _mainWindow);
 
     public static bool HasMessageLoop
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => InterlockedHelper.Read(ref _isStarted) != 0;
+        get => Atomics.Read(ref _isStarted) != 0;
     }
 
     public static bool IsMessageLoopThread
@@ -43,7 +43,7 @@ public static partial class WindowMessageLoop
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
+            uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
             return messageLoopThreadId != 0 && NativeMethods.GetCurrentThreadId() == messageLoopThreadId;
         }
     }
@@ -56,17 +56,17 @@ public static partial class WindowMessageLoop
 
     public static void Initialize()
     {
-        uint threadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
+        uint threadId = Atomics.Read(ref _threadIdForMessageLoop);
         if (threadId != 0)
             InvalidOperationException.Throw();
         Application.Init();
-        InterlockedHelper.Write(ref _threadIdForMessageLoop, NativeMethods.GetCurrentThreadId());
+        Atomics.Write(ref _threadIdForMessageLoop, NativeMethods.GetCurrentThreadId());
         _context = GMainContext.Default;
     }
 
     public static void ChangeMainWindow(CoreWindow? mainWindow)
     {
-        uint messageLoopThreadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
         if (messageLoopThreadId == 0)
             InvalidOperationException.Throw("The message loop is not initialized!");
         ChangeMainWindowCore(mainWindow, IsMessageLoopThread);
@@ -82,7 +82,7 @@ public static partial class WindowMessageLoop
             else
                 InvokeAsync(_windowShowAction, mainWindow);
         }
-        CoreWindow? oldWindow = InterlockedHelper.Exchange(ref _mainWindow, mainWindow);
+        CoreWindow? oldWindow = Atomics.Exchange(ref _mainWindow, mainWindow);
         if (oldWindow is not null && !ReferenceEquals(oldWindow, mainWindow))
             oldWindow.Closed -= OnWindowClosed;
 
@@ -95,7 +95,7 @@ public static partial class WindowMessageLoop
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int Start(CoreWindow? mainWindow)
     {
-        if (!IsMessageLoopThread || InterlockedHelper.Exchange(ref _isStarted, 1) != 0)
+        if (!IsMessageLoopThread || Atomics.Exchange(ref _isStarted, 1) != 0)
             InvalidOperationException.Throw();
         ChangeMainWindowCore(mainWindow, isMessageLoopThread: true);
         int result = DoMessageLoop();
@@ -114,7 +114,7 @@ public static partial class WindowMessageLoop
         GMainContext? context = _context;
         if (context is null)
             return 0;
-        while (InterlockedHelper.Read(ref _isStarted) != 0)
+        while (Atomics.Read(ref _isStarted) != 0)
             context.RunIteration(may_block: true);
         while (context.HasPendingEvents)
             context.RunIteration(may_block: true);
@@ -137,7 +137,7 @@ public static partial class WindowMessageLoop
             context.Wakeup();
         }, context, useSynchronizationContext: false);
 
-        while (!cancellationToken.IsCancellationRequested && InterlockedHelper.Read(ref _isStarted) != 0)
+        while (!cancellationToken.IsCancellationRequested && Atomics.Read(ref _isStarted) != 0)
             context.RunIteration(may_block: true);
     }
 }

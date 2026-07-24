@@ -1,3 +1,5 @@
+using System;
+
 using GLib;
 
 using Gtk;
@@ -32,10 +34,10 @@ public abstract class TabbedWindow : MultiPageWindow
         AddNotification("title", OnTitleChanged);
     }
 
-    protected override void OnClosed()
+    protected override void OnClosed(EventArgs args)
     {
         RemoveNotification("title", OnTitleChanged);
-        base.OnClosed();
+        base.OnClosed(args);
     }
     #endregion
 
