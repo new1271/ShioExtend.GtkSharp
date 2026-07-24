@@ -48,6 +48,12 @@ public static partial class WindowMessageLoop
         }
     }
 
+    public static void ThrowIfNotInMessageLoopThread()
+    {
+        if (!IsMessageLoopThread)
+            InvalidOperationException.Throw();
+    }
+
     public static void Initialize()
     {
         uint threadId = InterlockedHelper.Read(ref _threadIdForMessageLoop);
