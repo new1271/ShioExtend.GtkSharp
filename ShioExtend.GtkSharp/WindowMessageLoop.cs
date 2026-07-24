@@ -60,6 +60,7 @@ public static partial class WindowMessageLoop
         if (threadId != 0)
             InvalidOperationException.Throw();
         Application.Init();
+        SynchronizationContext.SetSynchronizationContext(null);
         Atomics.Write(ref _threadIdForMessageLoop, NativeMethods.GetCurrentThreadId());
         _context = GMainContext.Default;
     }
