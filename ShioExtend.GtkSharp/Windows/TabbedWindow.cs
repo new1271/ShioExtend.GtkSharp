@@ -1,8 +1,12 @@
 using System;
 
+using Atk;
+
 using GLib;
 
 using Gtk;
+
+using RiceTea.Core;
 
 namespace ShioExtend.GtkSharp.Windows;
 
@@ -10,14 +14,27 @@ public abstract class TabbedWindow : MultiPageWindow
 {
     #region Fields
     private Label _titleLabel = null!;
+    private string _title;
+    #endregion
+
+    #region Properties
+    public new string Title
+    {
+        get => Atomics.Read(ref _title);
+        set
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+            UpdateTitleLabel(value);
+        }
+    }
     #endregion
 
     #region Constuctor       
-    protected TabbedWindow(nint raw) : base(raw) { }
+    protected TabbedWindow(nint raw) : base(raw) => _title = string.Empty;
 
-    protected TabbedWindow(WindowType type) : base(type) { }
+    protected TabbedWindow(WindowType type) : base(type) => _title = string.Empty;
 
-    protected TabbedWindow(string title) : base(title) { }
+    protected TabbedWindow(string title) : base(title) => _title = title;
     #endregion
 
     #region Overrides Methods
@@ -26,18 +43,6 @@ public abstract class TabbedWindow : MultiPageWindow
         Stack stack = base.InitializePageStack();
         InitializeTitleBar(stack);
         return stack;
-    }
-
-    protected override void InitializeWidgets()
-    {
-        base.InitializeWidgets();
-        AddNotification("title", OnTitleChanged);
-    }
-
-    protected override void OnClosed(EventArgs args)
-    {
-        RemoveNotification("title", OnTitleChanged);
-        base.OnClosed(args);
     }
     #endregion
 
@@ -52,23 +57,25 @@ public abstract class TabbedWindow : MultiPageWindow
             },
             ShowCloseButton = true
         };
-        headerBar.PackStart(_titleLabel = new Label()
+
+        Label titleLabel;
+        headerBar.PackStart(titleLabel = new Label()
         {
             MarginStart = UIConstants.WidgetMargin,
             MarginEnd = UIConstants.WidgetMargin,
+            Text = _title
         });
 
-        UpdateTitleLabel(Title);
+        titleLabel.StyleContext.AddClass("title");
+
+        _titleLabel = titleLabel;
         Titlebar = headerBar;
     }
 
-    private static void OnTitleChanged(object sender, NotifyArgs e)
+    private void UpdateTitleLabel(string text)
     {
-        if (sender is not TabbedWindow window)
-            return;
-        window.UpdateTitleLabel(window.Title);
+        Atomics.Write(ref _title, text);
+        _titleLabel?.Text = text;
     }
-
-    private void UpdateTitleLabel(string text) => _titleLabel.Markup = $"<span weight=\"bold\" size=\"larger\">{text}</span>";
     #endregion
 }

@@ -17,11 +17,11 @@ public abstract partial class CoreWindow : Window, ICheckableDisposable
 
     public bool IsDisposed => _disposed;
 
-    protected CoreWindow(nint raw) : base(raw) { }
+    protected CoreWindow(nint raw) : base(raw) => WindowMessageLoop.ThrowIfNotInMessageLoopThread();
 
-    protected CoreWindow(WindowType type) : base(type) { }
+    protected CoreWindow(WindowType type) : base(type) => WindowMessageLoop.ThrowIfNotInMessageLoopThread();
 
-    protected CoreWindow(string title) : base(title) { }
+    protected CoreWindow(string title) : base(title) => WindowMessageLoop.ThrowIfNotInMessageLoopThread();
 
     public new void Show() => Show(forceShowAll: false);
 
@@ -29,20 +29,20 @@ public abstract partial class CoreWindow : Window, ICheckableDisposable
 
     private void Show(bool forceShowAll)
     {
+        WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
         if (WindowMessageLoop.HasMessageLoop)
-        {
-            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
             ShowCore(forceShowAll);
-        }
         else
             WindowMessageLoop.Start(this);
     }
 
     public ResponseType ShowDialog(CoreWindow? parent)
     {
+        WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
         if (WindowMessageLoop.HasMessageLoop)
         {
-            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
             ShowDialogCore(parent);
         }
         else
