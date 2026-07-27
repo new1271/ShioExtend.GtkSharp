@@ -1,9 +1,3 @@
-using System;
-
-using Atk;
-
-using GLib;
-
 using Gtk;
 
 using RiceTea.Core;
@@ -41,13 +35,13 @@ public abstract class TabbedWindow : MultiPageWindow
     protected override Stack InitializePageStack()
     {
         Stack stack = base.InitializePageStack();
-        InitializeTitleBar(stack);
+        Titlebar = InitializeTitleBar(stack);
         return stack;
     }
     #endregion
 
     #region Normal Methods
-    private void InitializeTitleBar(Stack stack)
+    protected virtual HeaderBar InitializeTitleBar(Stack stack)
     {
         HeaderBar headerBar = new HeaderBar()
         {
@@ -69,7 +63,8 @@ public abstract class TabbedWindow : MultiPageWindow
         titleLabel.StyleContext.AddClass("title");
 
         _titleLabel = titleLabel;
-        Titlebar = headerBar;
+
+        return headerBar;
     }
 
     private void UpdateTitleLabel(string text)
