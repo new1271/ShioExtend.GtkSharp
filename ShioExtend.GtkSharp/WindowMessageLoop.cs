@@ -51,7 +51,7 @@ public static partial class WindowMessageLoop
     public static void ThrowIfNotInMessageLoopThread()
     {
         if (!IsMessageLoopThread)
-            InvalidOperationException.Throw();
+            InvalidOperationException.Throw("The operation needs running in message loop thread!");
     }
 
     public static void Initialize()

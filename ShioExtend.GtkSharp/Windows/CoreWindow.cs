@@ -13,7 +13,7 @@ public abstract partial class CoreWindow : Window, ICheckableDisposable
     private CloseReason _closeReason;
     private bool _disposed, _isInitialized;
 
-    public ResponseType Response { get; set; }
+    public DialogResult DialogResult { get; set; }
 
     public bool IsDisposed => _disposed;
 
@@ -37,7 +37,7 @@ public abstract partial class CoreWindow : Window, ICheckableDisposable
             WindowMessageLoop.Start(this);
     }
 
-    public ResponseType ShowDialog(CoreWindow? parent)
+    public DialogResult ShowDialog(CoreWindow? parent)
     {
         WindowMessageLoop.ThrowIfNotInMessageLoopThread();
 
@@ -57,7 +57,7 @@ public abstract partial class CoreWindow : Window, ICheckableDisposable
                 ShowDialogCore(parent);
             }
         }
-        return Response;
+        return DialogResult;
     }
 
     internal void ShowInternal() => ShowCore(forceShowAll: false);
