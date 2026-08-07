@@ -68,6 +68,7 @@ public abstract partial class CoreWindow : Window, ICheckableDisposable
         {
             InitializeWidgets();
             _isInitialized = true;
+            OnLoaded();
             base.ShowAll();
         }
         else
@@ -108,7 +109,7 @@ public abstract partial class CoreWindow : Window, ICheckableDisposable
         if (args.Cancelled)
             return true;
 
-        OnClosed(EventArgs.Empty);
+        OnClosed();
         return false;
     }
 

@@ -1,24 +1,34 @@
-using Gtk;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
-using RiceTea.Core;
+using Gtk;
 
 namespace ShioExtend.GtkSharp.Windows;
 
 public abstract class TabbedWindow : MultiPageWindow
 {
     #region Fields
-    private Label _titleLabel = null!;
+    private Label? _titleLabel;
     private string _title;
     #endregion
 
     #region Properties
-    public new string Title
+    public new string? Title
     {
-        get => Atomics.Read(ref _title);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [return: NotNull]
+        get
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+            return _title;
+        }
         set
         {
             WindowMessageLoop.ThrowIfNotInMessageLoopThread();
-            UpdateTitleLabel(value);
+
+            value ??= string.Empty;
+            _title = value;
+            _titleLabel?.Text = value;
         }
     }
     #endregion
@@ -34,15 +44,19 @@ public abstract class TabbedWindow : MultiPageWindow
     #region Overrides Methods
     protected override Stack InitializePageStack()
     {
+        WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
         Stack stack = base.InitializePageStack();
         Titlebar = InitializeTitleBar(stack);
         return stack;
     }
     #endregion
 
-    #region Normal Methods
+    #region Virtual Methods
     protected virtual HeaderBar InitializeTitleBar(Stack stack)
     {
+        WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
         HeaderBar headerBar = new HeaderBar()
         {
             CustomTitle = new StackSwitcher()
@@ -65,12 +79,6 @@ public abstract class TabbedWindow : MultiPageWindow
         _titleLabel = titleLabel;
 
         return headerBar;
-    }
-
-    private void UpdateTitleLabel(string text)
-    {
-        Atomics.Write(ref _title, text);
-        _titleLabel?.Text = text;
     }
     #endregion
 }

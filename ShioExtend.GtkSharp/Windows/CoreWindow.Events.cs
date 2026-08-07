@@ -10,11 +10,13 @@ public delegate void ClosingEventHandler(object? sender, ref ClosingEventArgs ar
 
 partial class CoreWindow : Window, ICheckableDisposable
 {
+    public event EventHandler? Loaded;
     public event ClosingEventHandler? Closing;
     public event EventHandler? Closed;
 
+    protected virtual void OnLoaded() => Loaded?.Invoke(this, EventArgs.Empty);
     protected virtual void OnClosing(ref ClosingEventArgs args) => Closing?.Invoke(this, ref args);
-    protected virtual void OnClosed(EventArgs args) => Closed?.Invoke(this, args);
+    protected virtual void OnClosed() => Closed?.Invoke(this, EventArgs.Empty);
 }
 
 public ref struct ClosingEventArgs
