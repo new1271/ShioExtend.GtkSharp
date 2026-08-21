@@ -70,7 +70,13 @@ partial class WindowMessageLoop
         if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
-        return InvokeTaskCoreAsync(messageLoopThreadId, @delegate, null, CancellationToken.None);
+        if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
+        {
+            ProcessAllInvoke();
+            return Task.FromResult(@delegate.DynamicInvoke(null))!;
+        }
+        else
+            return InvokeTaskCoreAsync(messageLoopThreadId, @delegate, null, CancellationToken.None);
     }
 
     [Inline(InlineBehavior.Keep, export: true)]
@@ -84,7 +90,13 @@ partial class WindowMessageLoop
         if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
-        return InvokeTaskCoreAsync(messageLoopThreadId, @delegate, args, cancellationToken);
+        if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
+        {
+            ProcessAllInvoke();
+            return Task.FromResult(@delegate.DynamicInvoke(args))!;
+        }
+        else
+            return InvokeTaskCoreAsync(messageLoopThreadId, @delegate, args, cancellationToken);
     }
 
     private static void InvokeCoreAsync(uint threadId, Delegate @delegate, object?[]? args, CancellationToken cancellationToken = default)

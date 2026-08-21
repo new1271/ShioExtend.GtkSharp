@@ -21,7 +21,7 @@ partial class WindowMessageLoop
             action.Invoke();
         }
         else
-            InvokeTaskCoreAsync(messageLoopThreadId, action, CancellationToken.None).Wait();
+            InvokeTaskCoreAsync(action, CancellationToken.None).Wait();
     }
 
     public static void Invoke<TArg>(Action<TArg> action, TArg arg)
@@ -36,7 +36,7 @@ partial class WindowMessageLoop
             action.Invoke(arg);
         }
         else
-            InvokeTaskCoreAsync(messageLoopThreadId, action, arg, CancellationToken.None).Wait();
+            InvokeTaskCoreAsync(action, arg, CancellationToken.None).Wait();
     }
 
     public static void Invoke<TArg1, TArg2>(Action<TArg1, TArg2> action, TArg1 arg1, TArg2 arg2)
@@ -75,7 +75,7 @@ partial class WindowMessageLoop
         if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
-        InvokeCoreAsync(messageLoopThreadId, action, cancellationToken);
+        InvokeCoreAsync(action, cancellationToken);
     }
 
     public static void InvokeAsync<TArg>(Action<TArg> action,
@@ -85,7 +85,7 @@ partial class WindowMessageLoop
         if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
-        InvokeCoreAsync(messageLoopThreadId, action, arg, cancellationToken);
+        InvokeCoreAsync(action, arg, cancellationToken);
     }
 
     public static void InvokeAsync<TArg1, TArg2>(Action<TArg1, TArg2> action,
@@ -95,7 +95,7 @@ partial class WindowMessageLoop
         if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
-        InvokeCoreAsync(messageLoopThreadId, action, arg1, arg2, cancellationToken);
+        InvokeCoreAsync(action, arg1, arg2, cancellationToken);
     }
 
     public static void InvokeAsync<TArg1, TArg2, TArg3>(Action<TArg1, TArg2, TArg3> action,
@@ -105,7 +105,7 @@ partial class WindowMessageLoop
         if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             InvalidOperationException.Throw();
 
-        InvokeCoreAsync(messageLoopThreadId, action, arg1, arg2, arg3, cancellationToken);
+        InvokeCoreAsync(action, arg1, arg2, arg3, cancellationToken);
     }
 
     public static Task InvokeTaskAsync(Action action, CancellationToken cancellationToken = default)
@@ -114,7 +114,14 @@ partial class WindowMessageLoop
         if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             return InvalidOperationException.Throw<Task>();
 
-        return InvokeTaskCoreAsync(messageLoopThreadId, action, cancellationToken);
+        if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
+        {
+            ProcessAllInvoke();
+            action.Invoke();
+            return Task.CompletedTask;
+        }
+        else
+            return InvokeTaskCoreAsync(action, cancellationToken);
     }
 
     public static Task InvokeTaskAsync<TArg>(Action<TArg> action,
@@ -124,7 +131,14 @@ partial class WindowMessageLoop
         if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             return InvalidOperationException.Throw<Task>();
 
-        return InvokeTaskCoreAsync(messageLoopThreadId, action, arg, cancellationToken);
+        if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
+        {
+            ProcessAllInvoke();
+            action.Invoke(arg);
+            return Task.CompletedTask;
+        }
+        else
+            return InvokeTaskCoreAsync(action, arg, cancellationToken);
     }
 
     public static Task InvokeTaskAsync<TArg1, TArg2>(Action<TArg1, TArg2> action,
@@ -134,7 +148,14 @@ partial class WindowMessageLoop
         if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             return InvalidOperationException.Throw<Task>();
 
-        return InvokeTaskCoreAsync(messageLoopThreadId, action, arg1, arg2, cancellationToken);
+        if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
+        {
+            ProcessAllInvoke();
+            action.Invoke(arg1, arg2);
+            return Task.CompletedTask;
+        }
+        else
+            return InvokeTaskCoreAsync(messageLoopThreadId, action, arg1, arg2, cancellationToken);
     }
 
     public static Task InvokeTaskAsync<TArg1, TArg2, TArg3>(Action<TArg1, TArg2, TArg3> action,
@@ -144,31 +165,36 @@ partial class WindowMessageLoop
         if (messageLoopThreadId == 0 || Atomics.Read(ref _isStarted) == 0)
             return InvalidOperationException.Throw<Task>();
 
-        return InvokeTaskCoreAsync(messageLoopThreadId, action, arg1, arg2, arg3, cancellationToken);
+        if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
+        {
+            ProcessAllInvoke();
+            action.Invoke(arg1, arg2, arg3);
+            return Task.CompletedTask;
+        }
+        else
+            return InvokeTaskCoreAsync(messageLoopThreadId, action, arg1, arg2, arg3, cancellationToken);
     }
 
-    private static void InvokeCoreAsync(uint threadId, Action action, CancellationToken cancellationToken = default)
+    private static void InvokeCoreAsync(Action action, CancellationToken cancellationToken = default)
         => PostInvokeClosure(new ActionInvokeClosure(action, null, cancellationToken));
 
-    private static void InvokeCoreAsync<TArg>(uint threadId, Action<TArg> action, TArg arg, CancellationToken cancellationToken = default)
+    private static void InvokeCoreAsync<TArg>(Action<TArg> action, TArg arg, CancellationToken cancellationToken = default)
         => PostInvokeClosure(new ActionInvokeClosure<TArg>(action, arg, null, cancellationToken));
 
-    private static void InvokeCoreAsync<TArg1, TArg2>(uint threadId,
-        Action<TArg1, TArg2> action, TArg1 arg1, TArg2 arg2, CancellationToken cancellationToken = default)
+    private static void InvokeCoreAsync<TArg1, TArg2>(Action<TArg1, TArg2> action, TArg1 arg1, TArg2 arg2, CancellationToken cancellationToken = default)
         => PostInvokeClosure(new ActionInvokeClosure<TArg1, TArg2>(action, arg1, arg2, null, cancellationToken));
 
-    private static void InvokeCoreAsync<TArg1, TArg2, TArg3>(uint threadId,
-        Action<TArg1, TArg2, TArg3> action, TArg1 arg1, TArg2 arg2, TArg3 arg3, CancellationToken cancellationToken = default)
+    private static void InvokeCoreAsync<TArg1, TArg2, TArg3>(Action<TArg1, TArg2, TArg3> action, TArg1 arg1, TArg2 arg2, TArg3 arg3, CancellationToken cancellationToken = default)
         => PostInvokeClosure(new ActionInvokeClosure<TArg1, TArg2, TArg3>(action, arg1, arg2, arg3, null, cancellationToken));
 
-    private static Task<bool> InvokeTaskCoreAsync(uint threadId, Action action, CancellationToken cancellationToken = default)
+    private static Task<bool> InvokeTaskCoreAsync(Action action, CancellationToken cancellationToken = default)
     {
         TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         PostInvokeClosure(new ActionInvokeClosure(action, completionSource, cancellationToken));
         return completionSource.Task;
     }
 
-    private static Task<bool> InvokeTaskCoreAsync<TArg>(uint threadId, Action<TArg> action, TArg arg, CancellationToken cancellationToken = default)
+    private static Task<bool> InvokeTaskCoreAsync<TArg>(Action<TArg> action, TArg arg, CancellationToken cancellationToken = default)
     {
         TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         PostInvokeClosure(new ActionInvokeClosure<TArg>(action, arg, completionSource, cancellationToken));
