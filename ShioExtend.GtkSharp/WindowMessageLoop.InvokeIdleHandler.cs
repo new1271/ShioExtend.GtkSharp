@@ -16,7 +16,7 @@ partial class WindowMessageLoop
 {
     private static class InvokeIdleHandler
     {
-        private static readonly Swapable<Queue<IInvokeClosure>> _invokeClosureQueue = Swapable.CreateQueue<IInvokeClosure>(optimistic: true);
+        private static readonly ISwapable<Queue<IInvokeClosure>> _invokeClosureQueue = Swapable.CreateQueue<IInvokeClosure>(optimistic: true);
         public static readonly GLib.IdleHandler HandlerDelegate = delegate ()
         {
             ProcessAllInvoke();
