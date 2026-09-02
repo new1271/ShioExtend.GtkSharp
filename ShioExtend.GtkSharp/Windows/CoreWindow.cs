@@ -113,15 +113,8 @@ public abstract partial class CoreWindow : Window, ICheckableDisposable
         return false;
     }
 
-    protected abstract void InitializeWidgets();
-
-    protected virtual void DisposeCore(bool disposing) { }
-
-    protected override void Dispose(bool disposing)
+    protected override void OnDestroyed()
     {
-        if (Cells.Exchange(ref _disposed, true))
-            return;
-        DisposeCore(disposing);
         CancellationTokenSource? dialogTokenSource = Atomics.Exchange(ref _dialogTokenSource, null);
         if (dialogTokenSource is not null)
         {
@@ -137,6 +130,18 @@ public abstract partial class CoreWindow : Window, ICheckableDisposable
                 dialogTokenSource.Dispose();
             }
         }
+        base.OnDestroyed();
+    }
+
+    protected abstract void InitializeWidgets();
+
+    protected virtual void DisposeCore(bool disposing) { }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (Cells.Exchange(ref _disposed, true))
+            return;
+        DisposeCore(disposing);
         base.Dispose(disposing);
     }
 }
