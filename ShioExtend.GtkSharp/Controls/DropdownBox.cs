@@ -9,7 +9,7 @@ using RiceTea.Core.Collections;
 
 namespace ShioExtend.GtkSharp.Controls;
 
-public sealed class DropdownBox : IWidgetHolder
+public sealed class DropdownBox : UIElement
 {
     private static readonly IStyleProvider ListBoxStyleProvider = CreateListBoxStyleProvider();
 
@@ -24,7 +24,6 @@ public sealed class DropdownBox : IWidgetHolder
         return cssProvider;
     }
 
-    private readonly MenuButton _widget;
     private readonly ScrolledWindow _scrolledWindow;
     private readonly Label _label;
     private readonly Popover _menu;
@@ -32,16 +31,6 @@ public sealed class DropdownBox : IWidgetHolder
     private readonly ObservableList<string> _items;
 
     public event EventHandler? ItemClicked;
-
-    public Widget Widget
-    {
-        get
-        {
-            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
-
-            return _widget;
-        }
-    }
 
     public IList<string> Items
     {
@@ -80,14 +69,14 @@ public sealed class DropdownBox : IWidgetHolder
         {
             WindowMessageLoop.ThrowIfNotInMessageLoopThread();
 
-            return _widget.Sensitive;
+            return Widget.Sensitive;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
             WindowMessageLoop.ThrowIfNotInMessageLoopThread();
 
-            _widget.Sensitive = value;
+            Widget.Sensitive = value;
         }
     }
 
@@ -111,8 +100,6 @@ public sealed class DropdownBox : IWidgetHolder
 
     public DropdownBox()
     {
-        WindowMessageLoop.ThrowIfNotInMessageLoopThread();
-
         Label label = new Label() { Xalign = 0 };
         Box box = new Box(Orientation.Horizontal, UIConstants.WidgetMarginTiny);
         MenuButton button = new MenuButton();
@@ -126,7 +113,8 @@ public sealed class DropdownBox : IWidgetHolder
             ConstrainTo = PopoverConstraint.Window,
             Modal = true,
         };
-        ListBox listBox = new ListBox() {
+        ListBox listBox = new ListBox()
+        {
             SelectionMode = SelectionMode.Single,
             Margin = UIConstants.WidgetMargin,
         };
@@ -159,7 +147,7 @@ public sealed class DropdownBox : IWidgetHolder
         label.SizeAllocated += Label_SizeAllocated;
         button.SizeAllocated += Button_SizeAllocated;
 
-        _widget = button;
+        Widget = button;
         _scrolledWindow = window;
         _label = label;
         _menu = menu;

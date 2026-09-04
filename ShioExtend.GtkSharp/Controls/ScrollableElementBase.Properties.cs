@@ -8,8 +8,6 @@ namespace ShioExtend.GtkSharp.Controls;
 
 partial class ScrollableElementBase
 {
-    public Widget Widget => _widget;
-
     protected bool StickBottom
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -17,9 +15,9 @@ partial class ScrollableElementBase
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         init
         {
-            if (Cells.Exchange(ref _stickBottom, value) == value)
+            if (Cells.Exchange(ref _stickBottom, value) == value || Widget is not ScrolledWindow window)
                 return;
-            Adjustment adjustment = _widget.Vadjustment;
+            Adjustment adjustment = window.Vadjustment;
             if (value)
             {
                 adjustment.ValueChanged += OnAdjustmentValueChanged;
@@ -40,9 +38,9 @@ partial class ScrollableElementBase
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         init
         {
-            if (ReferenceEquals(Cells.Exchange(ref _content, value), value))
+            if (ReferenceEquals(Cells.Exchange(ref _content, value), value) || Widget is not ScrolledWindow window)
                 return;
-            _widget.Child = value;
+            window.Child = value;
         }
     }
 }

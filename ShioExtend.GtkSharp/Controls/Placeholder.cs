@@ -4,12 +4,8 @@ using Gtk;
 
 namespace ShioExtend.GtkSharp.Controls;
 
-public sealed class Placeholder : IWidgetHolder
+public sealed class Placeholder : UIElement
 {
-    private readonly Widget _widget;
-
-    public Widget Widget => _widget;
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Placeholder() => _widget = new DrawingArea();
+    public Placeholder() => Widget = new DrawingArea();
 }

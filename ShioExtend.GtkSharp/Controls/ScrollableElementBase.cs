@@ -7,11 +7,10 @@ using RiceTea.Core.Helpers;
 
 namespace ShioExtend.GtkSharp.Controls;
 
-public abstract partial class ScrollableElementBase : IWidgetHolder
+public abstract partial class ScrollableElementBase : UIElement
 {
     private const double ScrollBarTheresold = 10.0;
 
-    private readonly ScrolledWindow _widget;
     private readonly Widget? _content;
     private readonly bool _stickBottom;
 
@@ -19,10 +18,9 @@ public abstract partial class ScrollableElementBase : IWidgetHolder
 
     protected ScrollableElementBase()
     {
-        WindowMessageLoop.ThrowIfNotInMessageLoopThread();
-
         ScrolledWindow window = new ScrolledWindow();
-        _widget = window;
+
+        Widget = window;
     }
 
     private void OnAdjustmentValueChanged(object? sender, EventArgs e)

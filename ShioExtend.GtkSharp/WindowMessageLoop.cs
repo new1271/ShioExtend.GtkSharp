@@ -5,6 +5,7 @@ using System.Threading;
 using Gtk;
 
 using RiceTea.Core;
+using RiceTea.Core.Helpers;
 using RiceTea.Core.Native;
 
 using ShioExtend.GtkSharp.Windows;
@@ -48,10 +49,27 @@ public static partial class WindowMessageLoop
         }
     }
 
-    public static void ThrowIfNotInMessageLoopThread()
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ThrowIfNotInMessageLoopThread(bool mustBeInMessageLoopThread = false)
     {
-        if (!IsMessageLoopThread)
-            InvalidOperationException.Throw("The operation needs running in message loop thread!");
+        uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
+        if (messageLoopThreadId == 0)
+        {
+            if (mustBeInMessageLoopThread)
+                goto Throw;
+            else
+                goto Notify;
+        }
+
+        if (NativeMethods.GetCurrentThreadId() == messageLoopThreadId)
+            return;
+
+    Throw:
+        InvalidOperationException.Throw("The operation needs running in message loop thread!");
+        return;
+
+    Notify:
+        DebugHelper.WriteLine("The message loop thread is not exist, the operation won't be thread-safe!");
     }
 
     public static void Initialize()
