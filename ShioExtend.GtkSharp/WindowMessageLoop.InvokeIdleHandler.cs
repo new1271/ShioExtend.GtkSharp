@@ -38,6 +38,7 @@ partial class WindowMessageLoop
 
         public static void ProcessAllInvoke()
         {
+            Atomics.Write(ref _invokeBarrier, Booleans.FalseInt);
             if (Atomics.CompareExchange(ref _readBarrier, Booleans.TrueInt, Booleans.FalseInt) != Booleans.FalseInt)
             {
                 ProcessAllInvoke_InInvokeCall();

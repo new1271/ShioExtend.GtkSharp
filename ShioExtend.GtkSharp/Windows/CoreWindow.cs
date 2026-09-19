@@ -1,147 +1,118 @@
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 using Gtk;
 
 using RiceTea.Core;
+using RiceTea.Core.Collections;
+using RiceTea.Core.Helpers;
 
 namespace ShioExtend.GtkSharp.Windows;
 
-public abstract partial class CoreWindow : Window, ICheckableDisposable
+public abstract partial class CoreWindow : NativeWindow
 {
-    private CancellationTokenSource? _dialogTokenSource;
-    private CloseReason _closeReason;
-    private bool _disposed, _isInitialized;
+    private static readonly SyncList<GCHandle, UnwrappableList<GCHandle>> _rootWindowList = new(new());
 
-    public DialogResult DialogResult { get; set; }
+    private readonly SyncList<GCHandle, UnwrappableList<GCHandle>> _childrenReferenceList = new(new());
+    private Widget? _content;
 
-    public bool IsDisposed => _disposed;
-
-    protected CoreWindow(nint raw) : base(raw) => WindowMessageLoop.ThrowIfNotInMessageLoopThread();
-
-    protected CoreWindow(WindowType type) : base(type) => WindowMessageLoop.ThrowIfNotInMessageLoopThread();
-
-    protected CoreWindow(string title) : base(title) => WindowMessageLoop.ThrowIfNotInMessageLoopThread();
-
-    public new void Show() => Show(forceShowAll: false);
-
-    public new void ShowAll() => Show(forceShowAll: true);
-
-    private void Show(bool forceShowAll)
+    public Widget? Content
     {
-        WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+        get
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
 
-        if (WindowMessageLoop.HasMessageLoop)
-            ShowCore(forceShowAll);
+            return _content;
+        }
+        set
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
+            Widget? oldContent = _content;
+            if (ReferenceEquals(Cells.Exchange(ref _content, value), value))
+                return;
+            Window? window = Window;
+            if (window is null)
+                return;
+            if (oldContent is not null)
+                window.Remove(oldContent);
+            if (value is not null)
+                window.Add(value);
+
+            GC.KeepAlive(value);
+        }
+    }
+
+    protected CoreWindow() : base(null)
+    {
+        _rootWindowList.Add(GCHandle.Alloc(this, GCHandleType.Weak));
+    }
+
+    protected CoreWindow(CoreWindow? parent, bool passParentToUnderlyingWindow = false) : base(passParentToUnderlyingWindow ? parent : null)
+    {
+        SyncList<GCHandle, UnwrappableList<GCHandle>> windowList;
+        if (parent is null)
+            windowList = _rootWindowList;
         else
-            WindowMessageLoop.Start(this);
+            windowList = parent._childrenReferenceList;
+        windowList.Add(GCHandle.Alloc(this, GCHandleType.Weak));
     }
 
-    public DialogResult ShowDialog(CoreWindow? parent)
+    protected override void OnWindowCreated(Window window)
     {
-        WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+        base.OnWindowCreated(window);
 
-        if (WindowMessageLoop.HasMessageLoop)
-        {
-            ShowDialogCore(parent);
-        }
-        else
-        {
-            if (parent is null)
-                WindowMessageLoop.Start(this);
-            else
-            {
-                parent.Show();
-                if (!WindowMessageLoop.HasMessageLoop || !WindowMessageLoop.IsMessageLoopThread)
-                    InvalidOperationException.Throw();
-                ShowDialogCore(parent);
-            }
-        }
-        return DialogResult;
-    }
-
-    internal void ShowInternal() => ShowCore(forceShowAll: false);
-
-    private void ShowCore(bool forceShowAll)
-    {
-        if (!_isInitialized)
-        {
-            InitializeWidgets();
-            _isInitialized = true;
-            OnLoaded();
-            base.ShowAll();
-        }
-        else
-        {
-            if (forceShowAll)
-                base.ShowAll();
-            else
-                base.Show();
-        }
-    }
-
-    private void ShowDialogCore(CoreWindow? parent)
-    {
-        ShowCore(forceShowAll: false);
-        TransientFor = parent;
-        Modal = true;
-        CancellationTokenSource tokenSource = new CancellationTokenSource();
-        Atomics.Write(ref _dialogTokenSource, tokenSource);
-        WindowMessageLoop.StartMiniLoop(tokenSource.Token);
-    }
-
-    public new void Close() => Close(CloseReason.Programmically);
-
-    public void Close(CloseReason reason)
-    {
-        WindowMessageLoop.ThrowIfNotInMessageLoopThread();
-
-        _closeReason = reason;
-        base.Close();
-    }
-
-    protected override bool OnDeleteEvent(Gdk.Event evnt)
-    {
-        if (base.OnDeleteEvent(evnt))
-            return true;
-        ClosingEventArgs args = new ClosingEventArgs(Cells.Exchange(ref _closeReason, CloseReason.UserClicked), cancelled: false);
-        OnClosing(ref args);
-        if (args.Cancelled)
-            return true;
-
-        OnClosed();
-        return false;
-    }
-
-    protected override void OnDestroyed()
-    {
-        CancellationTokenSource? dialogTokenSource = Atomics.Exchange(ref _dialogTokenSource, null);
-        if (dialogTokenSource is not null)
-        {
-            try
-            {
-                dialogTokenSource.Cancel(throwOnFirstException: false);
-            }
-            catch (Exception)
-            {
-            }
-            finally
-            {
-                dialogTokenSource.Dispose();
-            }
-        }
-        base.OnDestroyed();
+        if (_content is Widget content)
+            window.Add(content);
+        InitializeWidgets();
+        window.ShowAll();
     }
 
     protected abstract void InitializeWidgets();
 
-    protected virtual void DisposeCore(bool disposing) { }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void DisposeAndClearAllWindows() => DisposeAndClearAllWindows(_rootWindowList);
 
-    protected override void Dispose(bool disposing)
+    private static void DisposeAndClearAllWindows(SyncList<GCHandle, UnwrappableList<GCHandle>> windowList)
     {
-        if (Cells.Exchange(ref _disposed, true))
+        using Lock.Scope lockScope = windowList.EnterLockScope();
+        UnwrappableList<GCHandle> unwrappedList = windowList.Items;
+        int count = unwrappedList.Count;
+        if (count <= 0)
             return;
-        DisposeCore(disposing);
-        base.Dispose(disposing);
+        ref GCHandle reference = ref UnsafeHelper.GetArrayDataReference(unwrappedList.Unwrap());
+        int i = 0;
+        do
+        {
+            ref GCHandle handle = ref UnsafeHelper.AddTypedOffset(ref reference, i);
+            if (!handle.IsAllocated)
+                continue;
+            try
+            {
+                if (handle.Target is CoreWindow window)
+                    window.Dispose();
+            }
+            finally
+            {
+                try
+                {
+                    handle.Free();
+                }
+                catch (Exception)
+                {
+                }
+            }
+        } while (++i < count);
+
+        unwrappedList.Clear();
+    }
+
+    protected override void DisposeCore(bool disposing)
+    {
+        DisposeAndClearAllWindows(_childrenReferenceList);
+
+        base.DisposeCore(disposing);
     }
 }

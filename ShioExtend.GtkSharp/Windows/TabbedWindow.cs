@@ -1,6 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
-
 using Gtk;
 
 namespace ShioExtend.GtkSharp.Windows;
@@ -9,36 +6,12 @@ public abstract class TabbedWindow : MultiPageWindow
 {
     #region Fields
     private Label? _titleLabel;
-    private string _title;
-    #endregion
-
-    #region Properties
-    public new string? Title
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [return: NotNull]
-        get
-        {
-            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
-            return _title;
-        }
-        set
-        {
-            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
-
-            value ??= string.Empty;
-            _title = value;
-            _titleLabel?.Text = value;
-        }
-    }
     #endregion
 
     #region Constuctor       
-    protected TabbedWindow(nint raw) : base(raw) => _title = string.Empty;
+    protected TabbedWindow() : base() { }
 
-    protected TabbedWindow(WindowType type) : base(type) => _title = string.Empty;
-
-    protected TabbedWindow(string title) : base(title) => _title = title;
+    protected TabbedWindow(CoreWindow? parent, bool passParentToUnderlyingWindow = false) : base(parent, passParentToUnderlyingWindow) { }
     #endregion
 
     #region Overrides Methods
@@ -47,8 +20,16 @@ public abstract class TabbedWindow : MultiPageWindow
         WindowMessageLoop.ThrowIfNotInMessageLoopThread();
 
         Stack stack = base.InitializePageStack();
-        Titlebar = InitializeTitleBar(stack);
+        Window!.Titlebar = InitializeTitleBar(stack);
         return stack;
+    }
+
+    protected override void ChangeTitleCore(Window window, string title)
+    {
+        if (_titleLabel is Label titleLabel)
+            titleLabel.Text = title;
+        else
+            base.ChangeTitleCore(window, title);
     }
     #endregion
 
@@ -71,12 +52,14 @@ public abstract class TabbedWindow : MultiPageWindow
         {
             MarginStart = UIConstants.WidgetMargin,
             MarginEnd = UIConstants.WidgetMargin,
-            Text = _title
+            Text = Title
         });
 
         titleLabel.StyleContext.AddClass("title");
 
         _titleLabel = titleLabel;
+
+        headerBar.ShowAll();
 
         return headerBar;
     }

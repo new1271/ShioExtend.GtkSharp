@@ -1,4 +1,19 @@
+using System;
+
 namespace ShioExtend.GtkSharp.Windows;
+
+partial class NativeWindow
+{
+    [Flags]
+    private enum WindowRuntimeFlags : uint
+    {
+        None = 0b000,
+        Initialized = 0b001,
+        Loaded = 0b010,
+        Focused = 0b100,
+        Destroyed = unchecked((uint)-1),
+    }
+}
 
 public enum CloseReason : uint
 {

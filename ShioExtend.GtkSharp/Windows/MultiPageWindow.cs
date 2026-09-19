@@ -66,11 +66,9 @@ public abstract partial class MultiPageWindow : CoreWindow
     #endregion
 
     #region Constuctor       
-    protected MultiPageWindow(nint raw) : base(raw) { }
+    protected MultiPageWindow() : base() { }
 
-    protected MultiPageWindow(WindowType type) : base(type) { }
-
-    protected MultiPageWindow(string title) : base(title) { }
+    protected MultiPageWindow(CoreWindow? parent, bool passParentToUnderlyingWindow = false) : base(parent, passParentToUnderlyingWindow) { }
     #endregion
 
     #region Override Methods
@@ -79,7 +77,7 @@ public abstract partial class MultiPageWindow : CoreWindow
         WindowMessageLoop.ThrowIfNotInMessageLoopThread();
 
         Stack stack = InitializePageStack();
-        Add(stack);
+        Content = stack;
         _pageStack = stack;
 
         PooledList<string> list = new();

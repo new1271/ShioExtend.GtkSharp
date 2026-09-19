@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -18,20 +19,20 @@ public static partial class WindowMessageLoop
 {
     private static readonly Action<int> _stopAction = static exitCode =>
     {
+        CoreWindow.DisposeAndClearAllWindows();
         _exitCode = exitCode;
         _isStarted = 0;
     };
-    private static readonly Action<CoreWindow> _windowShowAction = static window => window.ShowInternal();
+    private static readonly Action<NativeWindow> WindowShowAction = static window => window.ShowCore();
 
     private static GMainContext? _context;
-    private static CoreWindow? _mainWindow;
+    private static NativeWindow? _mainWindow;
     private static nuint _isStarted;
     private static uint _invokeBarrier, _threadIdForMessageLoop;
     private static int _exitCode;
+    private static bool _isFirstTimeStart;
 
     public static event MessageLoopExceptionEventHandler? ExceptionCaught;
-
-    public static CoreWindow? MainWindow => Atomics.Read(ref _mainWindow);
 
     public static bool HasMessageLoop
     {
@@ -83,43 +84,88 @@ public static partial class WindowMessageLoop
         _context = GMainContext.Default;
     }
 
-    public static void ChangeMainWindow(CoreWindow? mainWindow)
+    public static void ChangeMainWindow(NativeWindow? mainWindow)
+        => ChangeMainWindow(mainWindow, WindowShowAction);
+
+    public static void ChangeMainWindow(NativeWindow? mainWindow, Action<NativeWindow>? changeAction)
     {
         uint messageLoopThreadId = Atomics.Read(ref _threadIdForMessageLoop);
         if (messageLoopThreadId == 0)
-            InvalidOperationException.Throw("The message loop is not initialized!");
-        ChangeMainWindowCore(mainWindow, IsMessageLoopThread);
+            ThrowWhenMessageLoopThreadNotExists();
+        ChangeMainWindowCore(mainWindow, changeAction, IsMessageLoopThread);
     }
 
-    private static void ChangeMainWindowCore(CoreWindow? mainWindow, bool isMessageLoopThread)
+    private static void ChangeMainWindowCore(NativeWindow? mainWindow, Action<NativeWindow>? changeAction, bool isMessageLoopThread)
     {
         if (mainWindow is not null)
         {
-            mainWindow.Closed += OnWindowClosed;
-            if (isMessageLoopThread)
-                mainWindow.ShowInternal();
-            else
-                InvokeAsync(_windowShowAction, mainWindow);
+            mainWindow.Destroyed += OnWindowDestroyed;
+            if (changeAction is not null)
+                Invoke(changeAction, mainWindow);
         }
-        CoreWindow? oldWindow = Atomics.Exchange(ref _mainWindow, mainWindow);
+        NativeWindow? oldWindow = Atomics.Exchange(ref _mainWindow, mainWindow);
         if (oldWindow is not null && !ReferenceEquals(oldWindow, mainWindow))
-            oldWindow.Closed -= OnWindowClosed;
+            oldWindow.Destroyed -= OnWindowDestroyed;
 
-        static void OnWindowClosed(object? sender, EventArgs e) => Stop();
+        static void OnWindowDestroyed(object? sender, EventArgs e) => Stop();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int Start() => Start(mainWindow: null);
+    public static int Start() => Start(mainWindow: null, startAction: null);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int Start(CoreWindow? mainWindow)
+    public static int Start(NativeWindow? mainWindow) => Start(mainWindow, WindowShowAction);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int Start(NativeWindow? mainWindow, Action<NativeWindow>? startAction)
+    {
+        if (!IsMessageLoopThread)
+            InvalidOperationException.Throw("The operation needs running in message loop thread!");
+        if (Atomics.Exchange(ref _isStarted, 1) != 0)
+            InvalidOperationException.Throw("Message loop is already exists!");
+        return StartCore(mainWindow, startAction);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool TryStart(out int result) => TryStart(null, null, out result);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool TryStart(NativeWindow? mainWindow, out int result) => TryStart(mainWindow, WindowShowAction, out result);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool TryStart(NativeWindow? mainWindow, Action<NativeWindow>? startAction, out int result)
     {
         if (!IsMessageLoopThread || Atomics.Exchange(ref _isStarted, 1) != 0)
-            InvalidOperationException.Throw();
-        ChangeMainWindowCore(mainWindow, isMessageLoopThread: true);
-        int result = DoMessageLoop();
-        ChangeMainWindowCore(null, isMessageLoopThread: false);
-        return result;
+        {
+            result = 0;
+            return false;
+        }
+        result = StartCore(mainWindow, startAction);
+        return true;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int StartCore(NativeWindow? mainWindow, Action<NativeWindow>? startAction)
+    {
+        if (_isFirstTimeStart)
+        {
+            _isFirstTimeStart = false;
+        }
+        else
+        {
+            ProcessAllInvoke();
+        }
+
+        ChangeMainWindowCore(mainWindow, startAction, isMessageLoopThread: true);
+        try
+        {
+            return DoMessageLoop();
+        }
+        finally
+        {
+            Atomics.Write(ref _isStarted, 0);
+            ChangeMainWindowCore(null, null, isMessageLoopThread: false);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -159,4 +205,25 @@ public static partial class WindowMessageLoop
         while (!cancellationToken.IsCancellationRequested && Atomics.Read(ref _isStarted) != 0)
             context.RunIteration(may_block: true);
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ThrowWhenMessageLoopThreadNotExists(bool condition)
+    {
+        if (!condition)
+            ThrowWhenMessageLoopThreadNotExists();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static T ThrowWhenMessageLoopThreadNotExists<T>(T? condition) where T : class
+        => condition ?? ThrowWhenMessageLoopThreadNotExists<T>();
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    [DoesNotReturn]
+    private static T ThrowWhenMessageLoopThreadNotExists<T>()
+        => throw new InvalidOperationException("The message loop thread is not exists");
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    [DoesNotReturn]
+    private static void ThrowWhenMessageLoopThreadNotExists()
+        => throw new InvalidOperationException("The message loop thread is not exists");
 }

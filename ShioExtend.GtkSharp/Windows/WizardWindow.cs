@@ -54,21 +54,22 @@ public abstract class WizardWindow : MultiPageWindow
     }
     #endregion
 
-    #region Constuctor       
-    protected WizardWindow(nint raw) : base(raw) { }
+    #region Constuctor           
+    protected WizardWindow() : base() { }
 
-    protected WizardWindow(WindowType type) : base(type) { }
+    protected WizardWindow(CoreWindow parent, bool passParentToUnderlyingWindow = true) : base(parent, passParentToUnderlyingWindow) { }
 
-    protected WizardWindow(string title) : base(title) { }
     #endregion
 
     #region Overrides Methods
     protected override Stack InitializePageStack()
     {
         Stack stack = base.InitializePageStack();
-        Titlebar = InitializeTitleBar(stack);
+        Window!.Titlebar = InitializeTitleBar(stack);
         return stack;
     }
+
+    protected override void ChangeTitleCore(Window window, string title) { }
     #endregion
 
     #region Virtual Methods
@@ -78,7 +79,7 @@ public abstract class WizardWindow : MultiPageWindow
         {
             Title = _heading,
             Subtitle = _headingDescription,
-            ShowCloseButton = false
+            ShowCloseButton = false,
         };
         _headerBar = headerBar;
         return headerBar;

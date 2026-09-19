@@ -2,6 +2,8 @@ using System.Runtime.CompilerServices;
 
 using Gtk;
 
+using ShioExtend.GtkSharp.Controls;
+
 namespace ShioExtend.GtkSharp;
 
 public abstract partial class UIElement

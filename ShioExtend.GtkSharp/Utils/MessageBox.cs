@@ -11,12 +11,24 @@ namespace ShioExtend.GtkSharp.Utils;
 public static class MessageBox
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static DialogResult Show(NativeWindow owner, string text, string caption, MessageBoxFlags flags = MessageBoxFlags.Ok)
+        => WindowMessageLoop.Invoke(ShowInternal, owner, (text, caption), flags);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DialogResult Show(Window owner, string text, string caption, MessageBoxFlags flags = MessageBoxFlags.Ok)
         => WindowMessageLoop.Invoke(ShowInternal, owner, (text, caption), flags);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Task<DialogResult> ShowAsync(NativeWindow owner, string text, string caption, MessageBoxFlags flags = MessageBoxFlags.Ok)
+        => WindowMessageLoop.InvokeTaskAsync(ShowInternal, owner, (text, caption), flags);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Task<DialogResult> ShowAsync(Window owner, string text, string caption, MessageBoxFlags flags = MessageBoxFlags.Ok)
         => WindowMessageLoop.InvokeTaskAsync(ShowInternal, owner, (text, caption), flags);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static DialogResult ShowInternal(NativeWindow owner, (string text, string caption) tuple, MessageBoxFlags flags)
+        => ShowInternal(owner.Window!, tuple, flags);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static DialogResult ShowInternal(Window owner, (string text, string caption) tuple, MessageBoxFlags flags)
