@@ -123,10 +123,8 @@ public abstract partial class MultiPageWindow : CoreWindow
 
         return new Stack()
         {
-            /*
             TransitionType = StackTransitionType.SlideLeftRight,
             TransitionDuration = 200
-            */
         };
     }
 

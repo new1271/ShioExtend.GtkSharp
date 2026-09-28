@@ -32,6 +32,78 @@ partial class UIElement
         }
     }
 
+    public Align Halign
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
+            return _widget.Halign;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
+            _widget.Halign = value;
+        }
+    }
+
+    public Align Valign
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
+            return _widget.Valign;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
+            _widget.Valign = value;
+        }
+    }
+
+    public bool Hexpand
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
+            return _widget.Hexpand;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
+            _widget.Hexpand = value;
+        }
+    }
+
+    public bool Vexpand
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
+            return _widget.Vexpand;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set
+        {
+            WindowMessageLoop.ThrowIfNotInMessageLoopThread();
+
+            _widget.Vexpand = value;
+        }
+    }
+
     public bool Visible
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
